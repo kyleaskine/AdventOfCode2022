@@ -14,10 +14,10 @@ def processLine(line, cave):
 		paths.append(path)
 	cave[room] = [flow, paths]
 
-def findValves(cave):
+def findValves(cave, limit):
 	valveRooms = {}
 	for room in cave:
-		if cave[room][0] > 0 or room == 'AA':
+		if cave[room][0] > limit or room == 'AA':
 			valveRooms[room] = cave[room]
 	for valve in valveRooms:
 		valveDistances = []
@@ -61,22 +61,22 @@ def findAllPaths(valves, startRoom, visited, timer, timerArray):
 			masterPaths.append([visited, timerArray])
 			return
 
-def nestedPaths(masterPaths):
+def nestedPaths(masterPaths, valves):
 	i = 0
+	maxPressure = 0
 	for path in masterPaths:
 		j = i + 1
 		while j < len(masterPaths):
-			currArray = []
-			currArray.append(path)
-			currArray.append(masterPaths[j])
-			multiPath.append(mergeArrays(currArray))
+			pathPressure = mergeArrays([path, masterPaths[j]], valves, maxPressure)
+			if pathPressure[1] > maxPressure:
+				print("New Record: " + str(pathPressure[0][0]) + " - " + str(pathPressure[1]))
+				maxPressure = pathPressure[1]
 			j += 1
 		i += 1
-		if i % 100 == 0:
-			print(i)
-			input("Hit Key")
+		if i % 2000 == 0:
+			print("Iteration " + str(i) + " reached!")
 
-def mergeArrays(currPath):
+def mergeArrays(currPath, valves, maxPressure):
 	finalRoomArray = []
 	finalTimeArray = []
 	i = 0
@@ -100,9 +100,22 @@ def mergeArrays(currPath):
 			finalRoomArray.append(currPath[1][0][j])
 			finalTimeArray.append(currPath[1][1][j])
 			j += 1
-	return [finalRoomArray, finalTimeArray]
+	path = [finalRoomArray, finalTimeArray]
+	pressureReleased = checkPressureReleased(valves, path, maxPressure)
+	return [path, pressureReleased]
+	
+def checkPressureReleased(valves, path, max = 0):
+	maxPressureReleased = 0
+	openedValves = []
+	i = 0
+	pressureReleased = 0
+	for room in path[0]:
+		if room not in openedValves:
+			pressureReleased += (30 - path[1][i]) * valves[room][0]
+			openedValves.append(room)
+		i += 1
+	return pressureReleased
 		
-
 def releaseMostPressure(valves, path):
 	maxPressureReleased = 0
 	for pathTimer in path:
@@ -111,7 +124,7 @@ def releaseMostPressure(valves, path):
 		pressureReleased = 0
 		for room in pathTimer[0]:
 			if room not in openedValves:
-				pressureReleased += max(0,(30 - pathTimer[1][i]) * valves[room][0])
+				pressureReleased += (30 - pathTimer[1][i]) * valves[room][0]
 				openedValves.append(room)
 			i += 1
 		if pressureReleased > maxPressureReleased:
@@ -126,14 +139,13 @@ with open('day16.txt') as f:
 			break
 		processLine(line, cave)
 	buildGraph(cave)
-	valves = findValves(cave)
+	valves = findValves(cave, 0)
 	masterPaths = []
 	findAllPaths(valves, 'AA', [], 0, [])
 	print(len(masterPaths))
 	releaseMostPressure(valves, masterPaths)
 	masterPaths = []
-	multiPath = []
+	valves = findValves(cave, 0)
 	findAllPaths(valves, 'AA', [], 4, [])
-	nestedPaths(masterPaths)
-	print(len(multiPath))
-	releaseMostPressure(valves, multiPath)
+	print(len(masterPaths))
+	nestedPaths(masterPaths, valves)
